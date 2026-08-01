@@ -1,17 +1,25 @@
-set x = 10;
 say("=== Welcome to RumiScript ===");
-say("Initial Value of x: ", x);
 
-when (x > 5) {
-    say("x is indeed greater than 5!");
+say("--- Testing Addition with User Input ---");
+say("Enter the first number:");
+ask(num1);
+
+say("Enter the second number:");
+ask(num2);
+
+set sum = num1 + num2;
+say("The sum of ", num1, " and ", num2, " is: ", sum);
+
+say("--- Testing Control Flow & Loops ---");
+when (sum > 20) {
+    say("That's a pretty big sum!");
 } otherwise {
-    say("x is small.");
+    say("That sum is on the smaller side.");
 }
 
-say("Testing repeat loop:");
-repeat (3) {
-    say("Flex & Bison are working!");
+repeat (2) {
+    say("RumiScript handles math like a charm!");
 }
 
-set highest = max(x, 42);
-say("Max value between x and 42 is: ", highest);
+set highest = max(sum, 100);
+say("Max value between your sum and 100 is: ", highest);
