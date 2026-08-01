@@ -1,0 +1,17 @@
+set x = 10;
+say("=== Welcome to RumiScript ===");
+say("Initial Value of x: ", x);
+
+when (x > 5) {
+    say("x is indeed greater than 5!");
+} otherwise {
+    say("x is small.");
+}
+
+say("Testing repeat loop:");
+repeat (3) {
+    say("Flex & Bison are working!");
+}
+
+set highest = max(x, 42);
+say("Max value between x and 42 is: ", highest);

@@ -1,0 +1,30 @@
+=======================================
+      RumiScript Language Manual
+=======================================
+
+1. Variables
+Use 'set' to declare and assign variables.
+Syntax: set x = 10;
+
+2. Output & Input
+Print to screen: say("Value: ", x);
+Get user input: ask(x);
+
+3. Control Flow (Conditionals)
+Use 'when' and 'otherwise'.
+Syntax:
+when (x > 5) {
+    say("High");
+} otherwise {
+    say("Low");
+}
+
+4. Loops
+Use 'while' for condition-based loops, or 'repeat' for fixed iterations.
+Syntax:
+repeat (3) {
+    say("Hello");
+}
+
+5. Built-in Math Functions
+Supported: max(a,b), min(a,b), pow(base, exp), abs(x)
