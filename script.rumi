@@ -10,13 +10,9 @@ scan(y);
 set sum = x + y;
 print("The sum of x and y is: ", sum);
 
-print("--- Division & Zero Check ---");
-if (y == 0) {
-    print("Error: Division by zero is not allowed by the faculty!");
-} else {
-    set div = x / y;
-    print("x divided by y is: ", div);
-}
+print("--- Division ---");
+set div = x / y;
+print("x divided by y is: ", div);
 
 print("--- Math Functions ---");
 set z = -25.5; 
