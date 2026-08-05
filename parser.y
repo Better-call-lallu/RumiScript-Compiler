@@ -1,171 +1,140 @@
 %{
-#include "ast.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
+#include "ast.h"
 
-void yyerror(const char* s);
-int yylex(void);
+int yylex();
+void yyerror(const char *s);
 
-Symbol* symbolTable = NULL;
+struct Symbol* symTable = NULL;
 
-Symbol* getSymbol(const char* name) {
-    Symbol* s = symbolTable;
-    while (s) {
-        if (strcmp(s->name, name) == 0) return s;
-        s = s->next;
-    }
-    return NULL;
-}
-
-void setSymbol(const char* name, double value) {
-    Symbol* s = getSymbol(name);
-    if (!s) {
-        s = (Symbol*)malloc(sizeof(Symbol));
-        strcpy(s->name, name);
-        s->next = symbolTable;
-        symbolTable = s;
-    }
-    s->value = value;
-}
-
-ASTNode* createNumNode(double val) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_NUM; n->numVal = val; return n;
-}
-
-ASTNode* createStrNode(const char* str) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_STR; n->strVal = strdup(str); return n;
-}
-
-ASTNode* createVarNode(const char* name) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_VAR; n->varName = strdup(name); return n;
-}
-
-ASTNode* createAssignNode(const char* name, ASTNode* expr) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_ASSIGN; n->varName = strdup(name); n->left = expr; return n;
-}
-
-ASTNode* createBinOpNode(char op, ASTNode* left, ASTNode* right) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_BINOP; n->op = op; n->left = left; n->right = right; return n;
-}
-
-ASTNode* createWhenNode(ASTNode* cond, ASTNode* thenBranch, ASTNode* elseBranch) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_WHEN; n->left = cond; n->right = thenBranch; n->third = elseBranch; return n;
-}
-
-ASTNode* createWhileNode(ASTNode* cond, ASTNode* body) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_WHILE; n->left = cond; n->right = body; return n;
-}
-
-ASTNode* createRepeatNode(ASTNode* count, ASTNode* body) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_REPEAT; n->left = count; n->right = body; return n;
-}
-
-ASTNode* createSayNode(ASTNode* argList) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_SAY; n->left = argList; return n;
-}
-
-ASTNode* createAskNode(const char* name) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_ASK; n->varName = strdup(name); return n;
-}
-
-ASTNode* createMathFuncNode(const char* func, ASTNode* left, ASTNode* right) {
-    ASTNode* n = (ASTNode*)calloc(1, sizeof(ASTNode));
-    n->type = NODE_MATH_FUNC; n->varName = strdup(func); n->left = left; n->right = right; return n;
-}
-
-ASTNode* appendStmt(ASTNode* list, ASTNode* stmt) {
-    if (!stmt) return list;
-    if (!list) return stmt;
-    ASTNode* cur = list;
-    while (cur->next) cur = cur->next;
-    cur->next = stmt;
-    return list;
-}
-
-double evalAST(ASTNode* node) {
-    if (!node) return 0;
-    switch (node->type) {
-        case NODE_NUM: return node->numVal;
-        case NODE_VAR: {
-            Symbol* s = getSymbol(node->varName);
-            if (!s) { printf("Runtime Error: Undefined variable '%s'\n", node->varName); return 0; }
-            return s->value;
+void setSymbol(char* name, double val) {
+    struct Symbol* curr = symTable;
+    while(curr != NULL) {
+        if(strcmp(curr->name, name) == 0) {
+            curr->value = val;
+            return;
         }
+        curr = curr->next;
+    }
+    struct Symbol* newSym = (struct Symbol*)malloc(sizeof(struct Symbol));
+    strcpy(newSym->name, name);
+    newSym->value = val;
+    newSym->next = symTable;
+    symTable = newSym;
+}
+
+double getSymbol(char* name) {
+    struct Symbol* curr = symTable;
+    while(curr != NULL) {
+        if(strcmp(curr->name, name) == 0) return curr->value;
+        curr = curr->next;
+    }
+    return 0;
+}
+
+struct ASTNode* createNode(NodeType type) {
+    struct ASTNode* node = (struct ASTNode*)malloc(sizeof(struct ASTNode));
+    node->type = type;
+    node->left = node->right = node->third = node->fourth = node->next = NULL;
+    return node;
+}
+
+double eval(struct ASTNode* node) {
+    if (!node) return 0;
+    switch(node->type) {
+        case NODE_NUM: return node->val;
+        case NODE_IDENT: return getSymbol(node->varName);
         case NODE_ASSIGN: {
-            double val = evalAST(node->left);
-            setSymbol(node->varName, val);
-            return val;
+            double v = eval(node->left);
+            setSymbol(node->varName, v);
+            return v;
         }
         case NODE_BINOP: {
-            double l = evalAST(node->left);
-            double r = evalAST(node->right);
-            switch (node->op) {
-                case '+': return l + r;
-                case '-': return l - r;
-                case '*': return l * r;
-                case '/': return r != 0 ? l / r : 0;
-                case '>': return l > r;
-                case '<': return l < r;
-                case 'E': return l == r;
-                case 'N': return l != r;
-                case 'G': return l >= r;
-                case 'L': return l <= r;
-            }
+            double l = eval(node->left);
+            double r = eval(node->right);
+            if (node->op == '+') return l + r;
+            if (node->op == '-') return l - r;
+            if (node->op == '*') return l * r;
+            if (node->op == '/') return (r != 0) ? l / r : 0;
             return 0;
         }
-        case NODE_WHEN: {
-            if (evalAST(node->left)) evalAST(node->right);
-            else if (node->third) evalAST(node->third);
+        case NODE_LOGIC: {
+            double l = eval(node->left);
+            double r = eval(node->right);
+            if (node->op == 1) return l == r;
+            if (node->op == 2) return l != r;
+            if (node->op == 3) return l > r;
+            if (node->op == 4) return l < r;
+            if (node->op == 5) return l >= r;
+            if (node->op == 6) return l <= r;
             return 0;
         }
-        case NODE_WHILE: {
-            while (evalAST(node->left)) evalAST(node->right);
-            return 0;
-        }
-        case NODE_REPEAT: {
-            int count = (int)evalAST(node->left);
-            for (int i = 0; i < count; i++) evalAST(node->right);
-            return 0;
-        }
-        case NODE_SAY: {
-            ASTNode* arg = node->left;
-            while (arg) {
-                if (arg->type == NODE_STR) printf("%s", arg->strVal);
-                else printf("%g", evalAST(arg));
-                arg = arg->next;
+        case NODE_PRINT: {
+            struct ASTNode* curr = node->left;
+            while(curr != NULL) {
+                if (curr->type == NODE_IDENT) {
+                    if (strlen(curr->strVal) > 0) printf("%s", curr->strVal);
+                    else {
+                        double val = getSymbol(curr->varName);
+                        if (val == (long long)val) printf("%lld", (long long)val);
+                        else printf("%g", val); // Fixed: Drops extra zeros
+                    }
+                } else if (curr->type == NODE_NUM) {
+                    if (curr->val == (long long)curr->val) printf("%lld", (long long)curr->val);
+                    else printf("%g", curr->val); // Fixed: Drops extra zeros
+                }
+                curr = curr->next;
             }
             printf("\n");
             return 0;
         }
-        case NODE_ASK: {
-            double val;
+        case NODE_SCAN: {
+            double input;
             printf("Input for [%s]: ", node->varName);
-            if (scanf("%lf", &val) == 1) setSymbol(node->varName, val);
+            if(scanf("%lf", &input) == 1) {
+                setSymbol(node->varName, input);
+            }
+            return 0;
+        }
+        case NODE_IF: {
+            if (eval(node->left)) {
+                eval(node->right);
+            } else if (node->third) {
+                eval(node->third);
+            }
+            return 0;
+        }
+        case NODE_FOR: {
+            for(eval(node->left); eval(node->right); eval(node->third)) {
+                eval(node->fourth);
+            }
+            return 0;
+        }
+        case NODE_REPEAT: {
+            int count = (int)eval(node->left);
+            for(int i=0; i<count; i++) {
+                eval(node->right);
+            }
             return 0;
         }
         case NODE_MATH_FUNC: {
-            double l = evalAST(node->left);
-            double r = node->right ? evalAST(node->right) : 0;
-            if (strcmp(node->varName, "max") == 0) return l > r ? l : r;
-            if (strcmp(node->varName, "min") == 0) return l < r ? l : r;
-            if (strcmp(node->varName, "pow") == 0) return pow(l, r);
-            if (strcmp(node->varName, "abs") == 0) return fabs(l);
+            double a = eval(node->left);
+            if (strcmp(node->varName, "abs") == 0) return fabs(a);
+            double b = eval(node->right);
+            if (strcmp(node->varName, "pow") == 0) return pow(a, b);
+            if (strcmp(node->varName, "max") == 0) return (a > b) ? a : b;
+            if (strcmp(node->varName, "min") == 0) return (a < b) ? a : b;
             return 0;
         }
-        case NODE_STMT_LIST: {
-            ASTNode* cur = node->left;
-            while (cur) { evalAST(cur); cur = cur->next; }
+        case NODE_BLOCK: {
+            struct ASTNode* curr = node->left;
+            while(curr != NULL) {
+                eval(curr);
+                curr = curr->next;
+            }
             return 0;
         }
     }
@@ -174,110 +143,154 @@ double evalAST(ASTNode* node) {
 %}
 
 %union {
-    double numVal;
-    char* strVal;
-    char op;
-    struct ASTNode* nodeVal;
+    double val;
+    char str[256];
+    struct ASTNode* node;
 }
 
-%token <numVal> NUMBER
-%token <strVal> STRING IDENTIFIER
-%token SET SAY ASK WHEN OTHERWISE WHILE REPEAT
-%token MAX_KW MIN_KW POW_KW ABS_KW
-%token EQ NEQ GE LE
+%token <val> NUMBER
+%token <str> IDENTIFIER STRING
+%token SET PRINT SCAN IF ELSE FOR REPEAT
+%token MAX MIN POW ABS
+%token EQ NEQ GTE LTE GT LT
 
-%type <nodeVal> program stmt_list stmt expr arg_list block
+%type <node> program stmt_list stmt assign_stmt expr print_args logic_expr
 
-%right '='
-%left EQ NEQ '>' '<' GE LE
+%nonassoc LOWER_THAN_ELSE
+%nonassoc ELSE
+
 %left '+' '-'
 %left '*' '/'
+%nonassoc UMINUS 
+
+%%
+program: stmt_list { eval($1); }
+       ;
+
+stmt_list: stmt { $$ = createNode(NODE_BLOCK); $$->left = $1; }
+         | stmt_list stmt {
+             struct ASTNode* curr = $1->left;
+             while(curr->next != NULL) curr = curr->next;
+             curr->next = $2;
+             $$ = $1;
+         }
+         ;
+
+assign_stmt: SET IDENTIFIER '=' expr {
+             $$ = createNode(NODE_ASSIGN);
+             strcpy($$->varName, $2);
+             $$->left = $4;
+         }
+         ;
+
+stmt: assign_stmt ';' { $$ = $1; }
+    | PRINT '(' print_args ')' ';' {
+        $$ = createNode(NODE_PRINT);
+        $$->left = $3;
+    }
+    | SCAN '(' IDENTIFIER ')' ';' {
+        $$ = createNode(NODE_SCAN);
+        strcpy($$->varName, $3);
+    }
+    | IF '(' logic_expr ')' '{' stmt_list '}' %prec LOWER_THAN_ELSE {
+        $$ = createNode(NODE_IF);
+        $$->left = $3;
+        $$->right = $6;
+    }
+    | IF '(' logic_expr ')' '{' stmt_list '}' ELSE '{' stmt_list '}' {
+        $$ = createNode(NODE_IF);
+        $$->left = $3;
+        $$->right = $6;
+        $$->third = $10;
+    }
+    | FOR '(' assign_stmt ';' logic_expr ';' assign_stmt ')' '{' stmt_list '}' {
+        $$ = createNode(NODE_FOR);
+        $$->left = $3;   
+        $$->right = $5;  
+        $$->third = $7;  
+        $$->fourth = $10; 
+    }
+    | REPEAT '(' expr ')' '{' stmt_list '}' {
+        $$ = createNode(NODE_REPEAT);
+        $$->left = $3;
+        $$->right = $6;
+    }
+    ;
+
+print_args: STRING {
+             $$ = createNode(NODE_IDENT);
+             strcpy($$->strVal, $1);
+         }
+         | IDENTIFIER {
+             $$ = createNode(NODE_IDENT);
+             strcpy($$->varName, $1);
+         }
+         | NUMBER {
+             $$ = createNode(NODE_NUM);
+             $$->val = $1;
+         }
+         | print_args ',' STRING {
+             struct ASTNode* n = createNode(NODE_IDENT);
+             strcpy(n->strVal, $3);
+             struct ASTNode* curr = $1;
+             while(curr->next != NULL) curr = curr->next;
+             curr->next = n;
+             $$ = $1;
+         }
+         | print_args ',' IDENTIFIER {
+             struct ASTNode* n = createNode(NODE_IDENT);
+             strcpy(n->varName, $3);
+             struct ASTNode* curr = $1;
+             while(curr->next != NULL) curr = curr->next;
+             curr->next = n;
+             $$ = $1;
+         }
+         | print_args ',' NUMBER {
+             struct ASTNode* n = createNode(NODE_NUM);
+             n->val = $3;
+             struct ASTNode* curr = $1;
+             while(curr->next != NULL) curr = curr->next;
+             curr->next = n;
+             $$ = $1;
+         }
+         ;
+
+logic_expr: expr EQ expr { $$ = createNode(NODE_LOGIC); $$->left = $1; $$->right = $3; $$->op = 1; }
+          | expr NEQ expr { $$ = createNode(NODE_LOGIC); $$->left = $1; $$->right = $3; $$->op = 2; }
+          | expr GT expr { $$ = createNode(NODE_LOGIC); $$->left = $1; $$->right = $3; $$->op = 3; }
+          | expr LT expr { $$ = createNode(NODE_LOGIC); $$->left = $1; $$->right = $3; $$->op = 4; }
+          | expr GTE expr { $$ = createNode(NODE_LOGIC); $$->left = $1; $$->right = $3; $$->op = 5; }
+          | expr LTE expr { $$ = createNode(NODE_LOGIC); $$->left = $1; $$->right = $3; $$->op = 6; }
+          | expr { $$ = $1; } 
+          ;
+
+expr: NUMBER { $$ = createNode(NODE_NUM); $$->val = $1; }
+    | IDENTIFIER { $$ = createNode(NODE_IDENT); strcpy($$->varName, $1); }
+    | expr '+' expr { $$ = createNode(NODE_BINOP); $$->left = $1; $$->right = $3; $$->op = '+'; }
+    | expr '-' expr { $$ = createNode(NODE_BINOP); $$->left = $1; $$->right = $3; $$->op = '-'; }
+    | expr '*' expr { $$ = createNode(NODE_BINOP); $$->left = $1; $$->right = $3; $$->op = '*'; }
+    | expr '/' expr { $$ = createNode(NODE_BINOP); $$->left = $1; $$->right = $3; $$->op = '/'; }
+    | '-' expr %prec UMINUS { $$ = createNode(NODE_BINOP); $$->left = createNode(NODE_NUM); $$->left->val = 0; $$->right = $2; $$->op = '-'; } // Fixed: Unary Minus Support
+    | ABS '(' expr ')' { $$ = createNode(NODE_MATH_FUNC); strcpy($$->varName, "abs"); $$->left = $3; }
+    | POW '(' expr ',' expr ')' { $$ = createNode(NODE_MATH_FUNC); strcpy($$->varName, "pow"); $$->left = $3; $$->right = $5; }
+    | MAX '(' expr ',' expr ')' { $$ = createNode(NODE_MATH_FUNC); strcpy($$->varName, "max"); $$->left = $3; $$->right = $5; }
+    | MIN '(' expr ',' expr ')' { $$ = createNode(NODE_MATH_FUNC); strcpy($$->varName, "min"); $$->left = $3; $$->right = $5; }
+    | '(' expr ')' { $$ = $2; }
+    ;
 
 %%
 
-program:
-    stmt_list { 
-        ASTNode* root = (ASTNode*)calloc(1, sizeof(ASTNode));
-        root->type = NODE_STMT_LIST;
-        root->left = $1;
-        evalAST(root); 
-    }
-;
-
-stmt_list:
-    stmt_list stmt { $$ = appendStmt($1, $2); }
-  | stmt           { $$ = $1; }
-;
-
-stmt:
-    SET IDENTIFIER '=' expr opt_semi                           { $$ = createAssignNode($2, $4); }
-  | SAY '(' arg_list ')' opt_semi                              { $$ = createSayNode($3); }
-  | ASK '(' IDENTIFIER ')' opt_semi                            { $$ = createAskNode($3); }
-  | WHEN '(' expr ')' block OTHERWISE block                    { $$ = createWhenNode($3, $5, $7); }
-  | WHEN '(' expr ')' block                                    { $$ = createWhenNode($3, $5, NULL); }
-  | WHILE '(' expr ')' block                                   { $$ = createWhileNode($3, $5); }
-  | REPEAT '(' expr ')' block                                  { $$ = createRepeatNode($3, $5); }
-  | ';'                                                        { $$ = NULL; }
-;
-
-opt_semi:
-    ';'
-  | /* empty */
-;
-
-block:
-    '{' stmt_list '}' { 
-        ASTNode* listNode = (ASTNode*)calloc(1, sizeof(ASTNode));
-        listNode->type = NODE_STMT_LIST;
-        listNode->left = $2;
-        $$ = listNode;
-    }
-  | '{' '}' { $$ = NULL; }
-;
-
-arg_list:
-    arg_list ',' expr { $$ = appendStmt($1, $3); }
-  | expr              { $$ = $1; }
-;
-
-expr:
-    NUMBER                                 { $$ = createNumNode($1); }
-  | STRING                                 { $$ = createStrNode($1); }
-  | IDENTIFIER                             { $$ = createVarNode($1); }
-  | expr '+' expr                          { $$ = createBinOpNode('+', $1, $3); }
-  | expr '-' expr                          { $$ = createBinOpNode('-', $1, $3); }
-  | expr '*' expr                          { $$ = createBinOpNode('*', $1, $3); }
-  | expr '/' expr                          { $$ = createBinOpNode('/', $1, $3); }
-  | expr '>' expr                          { $$ = createBinOpNode('>', $1, $3); }
-  | expr '<' expr                          { $$ = createBinOpNode('<', $1, $3); }
-  | expr EQ expr                           { $$ = createBinOpNode('E', $1, $3); }
-  | expr NEQ expr                          { $$ = createBinOpNode('N', $1, $3); }
-  | MAX_KW '(' expr ',' expr ')'           { $$ = createMathFuncNode("max", $3, $5); }
-  | MIN_KW '(' expr ',' expr ')'           { $$ = createMathFuncNode("min", $3, $5); }
-  | POW_KW '(' expr ',' expr ')'           { $$ = createMathFuncNode("pow", $3, $5); }
-  | ABS_KW '(' expr ')'                    { $$ = createMathFuncNode("abs", $3, NULL); }
-  | '(' expr ')'                           { $$ = $2; }
-;
-
-%%
-
-void yyerror(const char* s) {
-    fprintf(stderr, "Syntax Error: %s\n", s);
+void yyerror(const char *s) {
+    fprintf(stderr, "Parse error: %s\n", s);
 }
 
-extern FILE* yyin;
-
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     if (argc > 1) {
-        FILE* file = fopen(argv[1], "r");
-        if (!file) {
-            perror("Error opening file");
-            return 1;
-        }
-        yyin = file;
+        FILE *f = fopen(argv[1], "r");
+        if (!f) { perror(argv[1]); return 1; }
+        extern FILE *yyin;
+        yyin = f;
     }
-    if (yyparse() != 0) {
-        fprintf(stderr, "Parsing failed.\n");
-    }
+    yyparse();
     return 0;
 }

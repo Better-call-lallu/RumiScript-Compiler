@@ -1,6 +1,6 @@
 %{
-#include "ast.h"
 #include "parser.tab.h"
+#include <stdlib.h>
 #include <string.h>
 %}
 
@@ -8,49 +8,35 @@
 
 %%
 
-[ \t\r\n]+              ; // Skip whitespace
-"//".*                  ; // Single-line comments
+[ \t\r\n]+          ; // Ignore whitespace
+"//".*              ; // Ignore comments
 
-"set"                   { return SET; }
-"say"                   { return SAY; }
-"ask"                   { return ASK; }
-"when"                  { return WHEN; }
-"otherwise"             { return OTHERWISE; }
-"while"                 { return WHILE; }
-"repeat"                { return REPEAT; }
+"set"               { return SET; }
+"print"             { return PRINT; }
+"scan"              { return SCAN; }
+"if"                { return IF; }
+"else"              { return ELSE; }
+"for"               { return FOR; }
+"repeat"            { return REPEAT; }
 
-"max"                   { return MAX_KW; }
-"min"                   { return MIN_KW; }
-"pow"                   { return POW_KW; }
-"abs"                   { return ABS_KW; }
+"max"               { return MAX; }
+"min"               { return MIN; }
+"pow"               { return POW; }
+"abs"               { return ABS; }
 
-[0-9]+(\.[0-9]+)?       { yylval.numVal = atof(yytext); return NUMBER; }
-\"([^\"\\]|\\.)*\"      { 
-                            yytext[strlen(yytext)-1] = '\0'; 
-                            yylval.strVal = strdup(yytext + 1); 
-                            return STRING; 
-                        }
-[a-zA-Z_][a-zA-Z0-9_]*  { yylval.strVal = strdup(yytext); return IDENTIFIER; }
+[a-zA-Z_][a-zA-Z0-9_]* { strcpy(yylval.str, yytext); return IDENTIFIER; }
+[0-9]+(\.[0-9]+)?      { yylval.val = atof(yytext); return NUMBER; }
+\"([^\"\\]|\\.)*\"     { yytext[strlen(yytext)-1] = '\0'; strcpy(yylval.str, yytext+1); return STRING; }
 
-"=="                    { yylval.op = 'E'; return EQ; }
-"!="                    { yylval.op = 'N'; return NEQ; }
-">="                    { yylval.op = 'G'; return GE; }
-"<="                    { yylval.op = 'L'; return LE; }
-">"                     { yylval.op = '>'; return '>'; }
-"<"                     { yylval.op = '<'; return '<'; }
+"=="                { return EQ; }
+"!="                { return NEQ; }
+">="                { return GTE; }
+"<="                { return LTE; }
+">"                 { return GT; }
+"<"                 { return LT; }
 
-"+"                     { return '+'; }
-"-"                     { return '-'; }
-"*"                     { return '*'; }
-"/"                     { return '/'; }
-"="                     { return '='; }
-";"                     { return ';'; }
-","                     { return ','; }
-"("                     { return '('; }
-")"                     { return ')'; }
-"{"                     { return '{'; }
-"}"                     { return '}'; }
+[-+*/=(){};,]       { return yytext[0]; }
 
-.                       { printf("Lexical Error: Unknown character %s\n", yytext); }
+.                   { /* Ignore unknown characters */ }
 
 %%

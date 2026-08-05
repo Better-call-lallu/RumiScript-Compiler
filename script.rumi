@@ -1,25 +1,54 @@
-say("=== Welcome to RumiScript ===");
+print("Lets go with RumiScript");
 
-say("--- Testing Addition with User Input ---");
-say("Enter the first number:");
-ask(num1);
+print("--- Basic Math & Input ---");
+set x = 10;
+print("x is set to: ", x);
 
-say("Enter the second number:");
-ask(num2);
+print("Enter a number for y (Try an integer, float, or 0!):");
+scan(y);
 
-set sum = num1 + num2;
-say("The sum of ", num1, " and ", num2, " is: ", sum);
+set sum = x + y;
+print("The sum of x and y is: ", sum);
 
-say("--- Testing Control Flow & Loops ---");
-when (sum > 20) {
-    say("That's a pretty big sum!");
-} otherwise {
-    say("That sum is on the smaller side.");
+print("--- Division & Zero Check ---");
+if (y == 0) {
+    print("Error: Division by zero is not allowed by the faculty!");
+} else {
+    set div = x / y;
+    print("x divided by y is: ", div);
 }
 
-repeat (2) {
-    say("RumiScript handles math like a charm!");
+print("--- Math Functions ---");
+set z = -25.5; 
+set abs_z = abs(z);
+print("Absolute value of ", z, " is: ", abs_z);
+
+set a = 3;
+set b = 8;
+set power = pow(a, 2);
+set maximum = max(a, b);
+set minimum = min(a, b);
+
+print(a, " to the power of 2 is: ", power);
+print("Max of ", a, " and ", b, " is: ", maximum);
+print("Min of ", a, " and ", b, " is: ", minimum);
+
+print("--- Conditionals ---");
+if (sum > 50) {
+    print("The sum is greater than 50!");
+} else {
+    print("The sum is 50 or less.");
 }
 
-set highest = max(sum, 100);
-say("Max value between your sum and 100 is: ", highest);
+print("--- Repeat Loop ---");
+repeat (5) {
+    print("Meow");
+}
+
+print("--- For Loop ---");
+print("Counting 1 to 10:");
+for (set i = 1; i <= 10; set i = i + 1) {
+    print(i);
+}
+
+print("=== Demonstration Complete ===");
